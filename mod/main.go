@@ -1,0 +1,67 @@
+//go:build js && wasm
+
+package main
+
+import (
+	"bytes"
+	"syscall/js"
+)
+
+type BinaryJS struct {
+	Buf  bytes.Buffer
+	done chan struct{}
+}
+
+func (c *BinaryJS) ResetData(this js.Value, args []js.Value) any {
+	c.Buf = bytes.Buffer{}
+	return nil
+}
+
+func (c *BinaryJS) WriteChunk(this js.Value, args []js.Value) any {
+	if len(args) < 1 {
+		return nil
+	}
+	data := make([]byte, args[0].Length())
+	js.CopyBytesToGo(data, args[0])
+	if len(data) == 0 {
+		close(c.done)
+		return nil
+	}
+	c.Buf.Write(data)
+	return nil
+}
+
+func (c *BinaryJS) SendChunkToJS(this js.Value, args []js.Value) any {
+	data := c.Buf.Bytes()
+	jsBuf := js.Global().Get("UInt8Array").New(len(data))
+	js.CopyBytesToJS(jsBuf, data)
+	return jsBuf
+}
+
+func add(this js.Value, args []js.Value) any {
+	a := args[0].Int()
+	b := args[1].Int()
+	return a + b
+}
+
+func hello(this js.Value, args []js.Value) any {
+	name := args[0].String()
+	return "Olá, " + name + "!"
+}
+
+func main() {
+	println("GO worker running...")
+	binaryData := &BinaryJS{done: make(chan struct{})}
+
+	js.Global().Set("GoFuncs", map[string]any{
+		"add":            js.FuncOf(add),
+		"hello":          js.FuncOf(hello),
+		"dataWriteChunk": js.FuncOf(binaryData.WriteChunk),
+		"dataReset":      js.FuncOf(binaryData.ResetData),
+		"dataRead":       js.FuncOf(binaryData.SendChunkToJS),
+	})
+
+	println("Waiting for data...")
+	// Impede que o Go finalize
+	select {}
+}

@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@plugin "daisyui";
+
+:root {
+  font-size: 1.15rem;
+}
+
+#root {
+  display: flex;
+  flex: 1;
+  height: 100vh;
+}
