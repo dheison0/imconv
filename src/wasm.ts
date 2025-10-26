@@ -4,6 +4,7 @@ import "./assets/wasm_exec.js";
 let loadingAPI = false;
 
 export interface GoAPI { // FIXME: Define WASM functions here
+  imgFormats: string[];
   add(a: number, b: number): number;
   hello(name: string): string;
   dataWriteChunk(data: Uint8Array): void;
@@ -43,7 +44,9 @@ function goProtectedCallWrapper<T extends (...args: any) => any>(f: T) {
 
 export function registryGoAPI(): GoAPI {
   const GoFuncs = (window as any).GoFuncs;
+  const ImgFormats = (window as any).ImgFormats;
   return { // FIXME: Associate functions
+    imgFormats: ImgFormats,
     add: goProtectedCallWrapper(GoFuncs.add),
     hello: goProtectedCallWrapper(GoFuncs.hello),
     dataWriteChunk: goProtectedCallWrapper(GoFuncs.dataWriteChunk),

@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "npm run mod:build && tsc -b && vite build",
     "mod:build": "GOOS=js GOARCH=wasm npm run mod:build:tinygo && npm run mod:compress",
-    "mod:build:tinygo": "tinygo build -o ./public/mod.wasm ./mod/main.go || npm run mod:build:default",
-    "mod:build:default": "go build -ldflags '-s -w' -o ./public/mod.wasm ./mod/main.go",
+    "mod:build:tinygo": "cd ./mod && tinygo build -o ../public/mod.wasm . || npm run mod:build:default",
+    "mod:build:default": "cd ./mod && go build -ldflags '-s -w' -o ../public/mod.wasm .",
     "mod:compress": "gzip -fq --best ./public/mod.wasm",
     "lint": "eslint ."
   },

@@ -7,6 +7,13 @@ import (
 	"syscall/js"
 )
 
+type ConverterFunction func(data []byte)
+
+var convertersMap = map[string]ConverterFunction{
+	"jpg": JPGConverter,
+	"png": PNGConverter,
+}
+
 type BinaryJS struct {
 	Buf  bytes.Buffer
 	done chan struct{}
@@ -51,17 +58,21 @@ func hello(this js.Value, args []js.Value) any {
 
 func main() {
 	println("GO worker running...")
-	binaryData := &BinaryJS{done: make(chan struct{})}
 
+	cache := &BinaryJS{done: make(chan struct{})}
 	js.Global().Set("GoFuncs", map[string]any{
 		"add":            js.FuncOf(add),
 		"hello":          js.FuncOf(hello),
-		"dataWriteChunk": js.FuncOf(binaryData.WriteChunk),
-		"dataReset":      js.FuncOf(binaryData.ResetData),
-		"dataRead":       js.FuncOf(binaryData.SendChunkToJS),
+		"dataWriteChunk": js.FuncOf(cache.WriteChunk),
+		"dataReset":      js.FuncOf(cache.ResetData),
+		"dataRead":       js.FuncOf(cache.SendChunkToJS),
 	})
 
-	println("Waiting for data...")
-	// Impede que o Go finalize
+	jsImgFormats := js.Global().Get("Array").New()
+	for format := range convertersMap {
+		jsImgFormats.SetIndex(jsImgFormats.Length(), js.ValueOf(format))
+	}
+	js.Global().Set("ImgFormats", jsImgFormats)
+
 	select {}
 }
